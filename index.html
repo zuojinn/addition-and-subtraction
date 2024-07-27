@@ -1,0 +1,325 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>HTML to PDF</title>
+    <script>
+      var _hmt = _hmt || []
+      ;(function () {
+        var hm = document.createElement("script")
+        hm.src = "https://hm.baidu.com/hm.js?855a941005b8045743a205dc829cff11"
+        var s = document.getElementsByTagName("script")[0]
+        s.parentNode.insertBefore(hm, s)
+      })()
+    </script>
+    <script src="html2canvas.min.js"></script>
+    <script src="jspdf.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+      p {
+        margin: 0;
+      }
+      a {
+        color: #ff8000;
+      }
+      .wrapper {
+        width: 800px;
+        padding-top: 50px;
+        margin: 50px auto;
+      }
+      .main-title {
+        font-size: 30px;
+        color: #ff8000;
+        text-align: center;
+        margin-bottom: 50px;
+      }
+      .description {
+        font-size: 18px;
+        color: #999;
+        margin-bottom: 50px;
+        text-align: center;
+      }
+      .file-selector {
+        height: 50px;
+        width: 800px;
+        border: 1px solid #ff8000;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        justify-content: stretch;
+      }
+      .file-selector__button {
+        height: 50px;
+        line-height: 50px;
+        width: 120px;
+        border: none;
+        text-align: center;
+        background: #ff8000;
+        outline: none;
+        cursor: pointer;
+        font-size: 18px;
+        color: #fff;
+        position: relative;
+        flex: 1;
+      }
+      .file-selector__button + .file-selector__button {
+        margin-left: 20px;
+      }
+      #file {
+        opacity: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .file-selector__link {
+        height: 50px;
+        line-height: 50px;
+        width: 80%;
+        flex-shrink: 0;
+        border: none;
+        outline: none;
+        padding-left: 10px;
+        font-size: 18px;
+        color: #333;
+      }
+      @media screen and (max-width: 800px) {
+        .wrapper {
+          width: 100%;
+          padding: 50px 20px;
+          box-sizing: border-box;
+          margin: 0;
+        }
+        .file-selector {
+          width: 100%;
+        }
+        .images {
+          width: 100%;
+        }
+      }
+      .mt-20 {
+        margin-top: 20px;
+      }
+      .flex-shrink {
+        flex-shrink: 0;
+      }
+      #pdf-content {
+        padding: 40px;
+      }
+      .problems {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      .problem-item {
+        width: calc(100% / 3);
+        display: flex;
+        align-items: center;
+      }
+      .problem-index {
+        color: #999;
+        text-align: right;
+        width: 3em;
+        flex-shrink: 0;
+        margin-right: 10px;
+      }
+      .title {
+        font-size: 30px;
+        color: #333;
+        margin-bottom: 40px;
+        text-align: center;
+        font-weight: bold;
+        color: #666;
+      }
+      .copyright {
+        margin-top: 30px;
+        text-align: center;
+        color: #999;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="main-title">百以内加减法测试题生成器</div>
+      <div class="description">
+        <p>
+          本工具主要用作给自己孩子生成练习题用，同时也开放给其他有需要宝爸宝妈们，后期计划同步开发小程序版本。<b
+            ><i>请务必在电脑上使用此工具~~~</i></b
+          >
+        </p>
+        <p>
+          如有任何疑问或者建议，请联系：<a href="mailto:mulianju@qq.com"
+            >mulianju@qq.com</a
+          >
+          或公众号搜索：mulianju。
+        </p>
+      </div>
+      <div class="file-selector">
+        <div class="file-selector__button flex-shrink">题目数量</div>
+        <input
+          type="number"
+          class="file-selector__link"
+          value="100"
+          min="0"
+          max="100"
+          maxlength="3"
+          placeholder="请输入题目数量，最少1道，最多100道"
+        />
+      </div>
+      <div class="file-selector mt-20" style="border: none; border-radius: 0">
+        <button class="file-selector__button" id="genSum">生成题目</button>
+        <button class="file-selector__button" id="print">打印题目</button>
+        <button class="file-selector__button" id="showAnswers">显示答案</button>
+      </div>
+      <div class="result">
+        <div id="pdf-content" class="content"></div>
+        <div id="pdf-content-answers" class="content"></div>
+      </div>
+    </div>
+    <script>
+      const input = document.querySelector(".file-selector__link")
+      const element = document.querySelector("#pdf-content")
+      const answersElement = document.querySelector("#pdf-content-answers")
+      const showAnswers = document.querySelector("#showAnswers")
+      const print = document.querySelector("#print")
+      var problems, answers
+
+      function generateMathProblems(
+        num,
+        max = 100,
+        min = 0,
+        operator = ["+", "-"],
+        operatorNum = 1
+      ) {
+        const problems = []
+        const answers = []
+        const set = new Set()
+        while (set.size < num) {
+          // 生成随机数
+          let num1 = Math.floor(Math.random() * (max - min) + min)
+          let num2 = Math.floor(Math.random() * (max - min) + min)
+          if (num1 === 0 || num2 === 0) {
+            continue
+          }
+          // 排除 ab 和 ba 两种情况
+
+          let operatorStr =
+            operator[Math.floor(Math.random() * operator.length)]
+          let answer = ""
+          if (operatorStr === "-") {
+            if (num1 < num2) {
+              ;[num1, num2] = [num2, num1]
+            }
+          }
+          const key = [num1, num2].sort((a, b) => b - a).join(operatorStr)
+          if (set.has(key)) {
+            continue
+          }
+          // 计算答案
+          switch (operatorStr) {
+            case "+":
+              answer = num1 + num2
+              break
+            case "-":
+              answer = num1 - num2
+              break
+            case "++":
+              answer = num1 + num2 + min
+              break
+            case "--":
+              answer = num1 - num2 - min
+              break
+            default:
+              break
+          }
+          // 生成题目和答案
+          const problem = `${num1} ${operatorStr} ${num2} = ___`
+          problems.push(problem)
+          answers.push(answer)
+          set.add(key)
+        }
+        console.log(set)
+        return {
+          problems: problems,
+          answers: answers,
+        }
+      }
+      function htmlToPdf() {
+        if (!problems) {
+          alert("请先生成题目")
+          return
+        }
+        const fileName = "my-document"
+
+        const pdfWidth = element.offsetWidth
+        const pdfHeight = element.offsetHeight
+        const topMargin = 10
+        const bottomMargin = 10
+
+        html2canvas(element, {
+          background: "#fff",
+          scale: 2,
+        }).then((canvas) => {
+          const image = canvas.toDataURL("image/png")
+          const pdf = new jsPDF("p", "pt", [pdfWidth, pdfHeight])
+          pdf.addImage(image, "PNG", 0, topMargin, pdfWidth, pdfHeight)
+          pdf.save(fileName + ".pdf")
+        })
+      }
+      document.querySelector("#genSum").addEventListener("click", function () {
+        const num = input.value
+        if (!num) {
+          alert("请输入题目数量")
+          return
+        }
+        const result = generateMathProblems(num)
+        problems = result.problems
+        answers = result.answers
+        element.innerHTML = `
+        <div class="title">测试题目</div>
+        <div class="problems">
+          ${problems
+            .map(
+              (item, index) =>
+                `<div class="problem-item"><span class="problem-index">${
+                  index + 1
+                }.</span>${item}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="copyright">by: www.mulianju.com</div>
+        `
+      })
+      showAnswers.addEventListener("click", function () {
+        if (!problems) {
+          alert("请先生成题目")
+          return
+        }
+        answersElement.innerHTML = `
+        <div class="title">测试答案</div>
+        <div class="problems">
+          ${answers
+            .map(
+              (item, index) =>
+                `<div class="problem-item"><span class="problem-index">${
+                  index + 1
+                }.</span>${item}</div>`
+            )
+            .join("")}
+        </div>
+        `
+        answersElement.scrollIntoView({ behavior: "smooth" })
+      })
+      print.addEventListener("click", htmlToPdf)
+    </script>
+  </body>
+</html>
